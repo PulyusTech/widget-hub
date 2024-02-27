@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>NoRed</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      body {
+        background-color: #222222;
+      }
+      canvas {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+      }
+    </style>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+  </head>
+  <body></body>
+  <script>
+    class PIXIGame {}
+    //classes
+    PIXIGame.Hitbox = class {
+      constructor(x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.hitbox = new PIXI.Rectangle(x, y, width, height);
+        this.hitboxTop = 0;
+        this.hitboxRight = 0;
+        this.hitboxBottom = 0;
+        this.hitboxLeft = 0;
+        this.hitboxInversed = false;
+      }
+      invertHitbox() {
+        this.hitboxInversed = this.hitboxInversed ? false : true;
+      }
+      offsetHitbox(top, right, bottom, left) {
+        this.hitboxTop = top;
+        this.hitboxRight = right;
+        this.hitboxBottom = bottom;
+        this.hitboxLeft = left;
+      }
+      getHitbox() {
+        if (this.sprite) this.hitbox = this.sprite.getBounds();
+        return new PIXI.Rectangle(
+          this.hitbox.x + this.hitboxLeft,
+          this.hitbox.y + this.hitboxTop,
+          this.hitbox.width - this.hitboxLeft - this.hitboxRight,
+          this.hitbox.height - this.hitboxTop - this.hitboxBottom
+        );
+      }
+      isColliding(rect) {
+        const a = this.getHitbox();
+        const b = rect.getHitbox();
+        return rect.hitboxInversed
+          ? a.y < b.y ||
+              a.y + a.height > b.y + b.height ||
+              a.x < b.x ||
+              a.x + a.width > b.x + b.width
+          : !(
+              a.y + a.height < b.y ||
+              a.y > b.y + b.height ||
+              a.x + a.width < b.x ||
+              a.x > b.x + b.width
+            );
+      }
+    };
+    PIXIGame.Rect = class extends PIXIGame.Hitbox {
+      constructor(...args) {
+        super(...args);
+        this.graphics = new PIXI.Graphics();
+        this.graphics.beginFill(args[4]);
+        //this.graphics.lineStyle(5, 0xFF0000);
+        this.graphics.drawRect(this.x, this.y, this.width, this.height);
+      }
+    };
+    PIXIGame.RectSprite = class extends PIXIGame.Rect {
+      constructor(...args) {
+        super(...args);
+        this.sprite = PIXI.Sprite.from(PIXI.Texture.WHITE);
+        this.sprite.x = args[0];
+        this.sprite.y = args[1];
+        this.sprite.width = args[2];
+        this.sprite.height = args[3];
+        this.sprite.tint = args[4];
+      }
+      runOnClick(func, pointer) {
+        this.sprite.eventMode = "static";
+        if (pointer) this.sprite.cursor = "pointer";
+        this.sprite.on("pointerdown", func);
+      }
+    };
+    PIXIGame.Circle = class extends PIXIGame.Hitbox {
+      constructor(x, y, radius, fill) {
+        super();
+        this.x = x - radius;
+        this.y = y - radius;
+        this.width = radius * 2;
+        this.height = radius * 2;
+        this.hitbox = new PIXI.Rectangle(
+          this.x,
+          this.y,
+          this.width,
+          this.height
+        );
+        this.hitboxTop = 0;
+        this.hitboxRight = 0;
+        this.hitboxBottom = 0;
+        this.hitboxLeft = 0;
+        this.hitboxInversed = false;
+        this.graphics = new PIXI.Graphics();
+        this.graphics.beginFill(fill);
+        this.graphics.lineStyle(0);
+        this.graphics.drawCircle(x, y, radius);
+        this.graphics.endFill();
+      }
+    };
+    PIXIGame.CircleSprite = class extends PIXIGame.Circle {
+      constructor(...args) {
+        super(...args);
+        this.sprite = PIXI.Sprite.from(PIXI.Texture.WHITE);
+        this.sprite.x = args[0] - args[2];
+        this.sprite.y = args[1] - args[2];
+        this.sprite.width = args[2] * 2;
+        this.sprite.height = args[2] * 2;
+        this.sprite.tint = args[3];
+        this.sprite.mask = this.graphics;
+      }
+      runOnClick(func, pointer) {
+        this.sprite.eventMode = "static";
+        if (pointer) this.sprite.cursor = "pointer";
+        this.sprite.on("pointerdown", func);
+      }
+    };
+    PIXIGame.Text = class {
+      constructor(text, x, y, style) {
+        this.style = new PIXI.TextStyle(style);
+        this.text = new PIXI.Text(text, style);
+        this.text.x = x;
+        this.text.y = y;
+        this.editable = false;
+        document.addEventListener("keydown", (event) => {
+          if (this.editable) {
+            if (event.key.length > 1) {
+              if (event.key == "Backspace")
+                this.text.text = this.text.text.slice(0, -1);
+            } else {
+              this.text.text += event.key;
+            }
+          }
+        });
+      }
+      runOnClick(func, pointer) {
+        this.text.eventMode = "static";
+        if (pointer) this.text.cursor = "pointer";
+        this.text.on("pointerdown", func);
+      }
+    };
+    PIXIGame.Solid = class extends PIXIGame.Hitbox {
+      constructor(src) {
+        super();
+        this.sprite = new PIXI.Sprite.from(src);
+        this.hitbox = this.sprite.getBounds();
+        this.x = this.hitbox.x;
+        this.y = this.hitbox.y;
+        this.width = this.hitbox.width;
+        this.height = this.hitbox.height;
+        this.hitboxTop = 0;
+        this.hitboxRight = 0;
+        this.hitboxBottom = 0;
+        this.hitboxLeft = 0;
+        this.hitboxInversed = false;
+      }
+      runOnClick(func, pointer) {
+        this.sprite.eventMode = "static";
+        if (pointer) this.sprite.cursor = "pointer";
+        this.sprite.on("pointerdown", func);
+      }
+    };
+    PIXIGame.AnimatedSolid = class extends PIXIGame.Hitbox {
+      constructor(src) {
+        super();
+        this.sprite = new PIXI.AnimatedSprite(src);
+        this.hitbox = this.sprite.getBounds();
+        this.x = this.hitbox.x;
+        this.y = this.hitbox.y;
+        this.width = this.hitbox.width;
+        this.height = this.hitbox.height;
+        this.hitboxTop = 0;
+        this.hitboxRight = 0;
+        this.hitboxBottom = 0;
+        this.hitboxLeft = 0;
+        this.hitboxInversed = false;
+      }
+      runOnClick(func, pointer) {
+        this.sprite.eventMode = "static";
+        if (pointer) this.sprite.cursor = "pointer";
+        this.sprite.on("pointerdown", func);
+      }
+    };
+    //functions
+    PIXIGame.sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    var arrRects_WnH2YuQHJz = [];
+    var xy_YYajMgRVnk = [];
+    var tempRect_oltIPyckCG = null;
+    PIXIGame.runRectMaker = (app) => {
+      app.stage.eventMode = "static";
+      app.stage.hitArea = app.screen;
+      app.stage.on("pointerdown", async (event) => {
+        const screenOffset = app.view.getBoundingClientRect();
+        const x = Math.round(event.client.x - screenOffset.x);
+        const y = Math.round(event.client.y - screenOffset.y);
+        if (xy_YYajMgRVnk.length) {
+          tempRect_oltIPyckCG.graphics.destroy();
+          tempRect_oltIPyckCG = null;
+          const rect = new PIXIGame.Rect(
+            Math.min(x, xy_YYajMgRVnk[0]),
+            Math.min(y, xy_YYajMgRVnk[1]),
+            Math.abs(x - xy_YYajMgRVnk[0]),
+            Math.abs(y - xy_YYajMgRVnk[1]),
+            0xff0000
+          );
+          app.stage.addChild(rect.graphics);
+          xy_YYajMgRVnk = [];
+          arrRects_WnH2YuQHJz.push(rect);
+        } else {
+          xy_YYajMgRVnk = [x, y];
+          tempRect_oltIPyckCG = new PIXIGame.Rect(
+            x - 5,
+            y - 5,
+            10,
+            10,
+            0xff0000
+          );
+          app.stage.addChild(tempRect_oltIPyckCG.graphics);
+        }
+      });
+    };
+    PIXIGame.exportRectMaker = () => {
+      let result = "[";
+      for (let rect of arrRects_WnH2YuQHJz) {
+        result += `{"x":${rect.x},"y":${rect.y},"width":${rect.width},"height":${rect.height}},`;
+      }
+      return result.slice(0, -1) + "]";
+    };
+    PIXIGame.undoRectMaker = () => {
+      arrRects_WnH2YuQHJz[arrRects_WnH2YuQHJz.length - 1].graphics.destroy();
+      arrRects_WnH2YuQHJz.pop();
+    };
+    PIXIGame.loadRectsFromJSON = async (app, src) => {
+      const file = await fetch(src);
+      const json = await file.json();
+      const rects = [];
+      for (let rect of json) {
+        const r = new PIXIGame.Rect(
+          rect.x,
+          rect.y,
+          rect.width,
+          rect.height,
+          0x0000ff
+        );
+        app.stage.addChild(r.graphics);
+        rects.push(r);
+      }
+      return rects;
+    };
+  </script>
+  <script>
+    const appscale = 600;
+    const app = new PIXI.Application({ width: appscale, height: appscale });
+    document.body.appendChild(app.view);
+    const arrGrids = [];
+    let grids = 3; //must be odd
+    const pattern = [
+      [1, 1, 1],
+      [1, 1, 1],
+      [1, 1, 1],
+    ];
+    let acceptInput = true;
+    let allowPatternChange = false;
+    function resetGrids(arr) {
+      for (let item of arr) {
+        item.sprite.tint = 0x00ff00;
+      }
+    }
+    function createPattern() {
+      if (allowPatternChange) {
+        pattern.length = 0;
+        for (let i = 0; i < grids; i++) {
+          pattern.push([]);
+          for (let j = 0; j < grids; j++) {
+            pattern[i].push(Math.round(Math.random()));
+          }
+        }
+      }
+    }
+    function applyPattern(grid) {
+      if (acceptInput) {
+        for (let i = 0; i < grids; i++) {
+          for (let j = 0; j < grids; j++) {
+            for (let item of arrGrids) {
+              if (
+                item.x == grid.x + (j - (grids - 1) / 2) * (appscale / grids) &&
+                item.y == grid.y + (i - (grids - 1) / 2) * (appscale / grids) &&
+                pattern[i][j] == 1
+              )
+                item.sprite.tint =
+                  item.sprite.tint == 0x00ff00 ? 0xff0000 : 0x00ff00;
+            }
+          }
+        }
+        acceptInput = false;
+        for (let item of arrGrids) {
+          if (item.sprite.tint == 0xff0000) {
+            acceptInput = true;
+            break;
+          }
+        }
+        if (!acceptInput) {
+          const txt = new PIXIGame.Text(
+            "Congratulations!",
+            app.view.width / 2,
+            app.view.height / 2,
+            {
+              fontFamily: "Comic Sans MS",
+              fontSize: appscale / 18,
+              fontStyle: "italic",
+              fontWeight: "bold",
+              fill: ["#ffffff"],
+              stroke: "#000000",
+              strokeThickness: appscale / 75,
+            }
+          );
+          txt.text.anchor.set(0.5);
+          app.stage.addChild(txt.text);
+          setTimeout(() => {
+            txt.text.destroy();
+            resetGrids(arrGrids);
+            createPattern();
+            acceptInput = true;
+            console.log(
+              "Solution: " +
+                scramble(12)
+                  .reverse()
+                  .map((n) => n + 1)
+                  .join(", ")
+            );
+          }, 1000);
+        }
+      }
+    }
+    function scramble(iterations) {
+      const moves = [];
+      for (let i = 0; i < iterations; i++) {
+        let rnd = Math.floor(Math.random() * 9);
+        while (rnd == moves[moves.length - 1])
+          rnd = Math.floor(Math.random() * 9);
+        moves.push(rnd);
+        applyPattern(arrGrids[rnd]);
+      }
+      return moves;
+    }
+    createPattern();
+    for (let i = 0; i < grids; i++) {
+      for (let j = 0; j < grids; j++) {
+        const grid = new PIXIGame.RectSprite(
+          j * (appscale / grids) + 5,
+          i * (appscale / grids) + 5,
+          appscale / grids - 10,
+          appscale / grids - 10,
+          0x00ff00
+        );
+        grid.runOnClick(() => applyPattern(grid), true);
+        app.stage.addChild(grid.sprite);
+        arrGrids.push(grid);
+      }
+    }
+    console.log(
+      "Solution: " +
+        scramble(12)
+          .reverse()
+          .map((n) => n + 1)
+          .join(", ")
+    );
+    const keymap = "qweasdzxc".split("");
+    document.body.onkeyup = (event) => {
+      let i = keymap.indexOf(event.key);
+      if (i != -1) applyPattern(arrGrids[i]);
+    };
+  </script>
+</html>
