@@ -287,7 +287,7 @@
       [1, 1, 1],
     ];
     let acceptInput = true;
-    let allowPatternChange = !window.href.includes("apc=false");
+    let allowPatternChange = !window.location.href.includes("apc=false");
     function resetGrids(arr) {
       for (let item of arr) {
         item.sprite.tint = 0x00ff00;
