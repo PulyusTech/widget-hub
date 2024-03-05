@@ -8,6 +8,7 @@
     <div id="fd" style="display: flex"></div>
   </body>
   <script>
+    const threshold = 0.4;
     const params = new URL(document.location).searchParams;
     const barCount = params.get("b") || 4;
     document.head.insertAdjacentHTML(
@@ -21,7 +22,7 @@
         .getElementById("fd")
         .insertAdjacentHTML(
           "beforeend",
-          `<div class="btn" id="btn${i}" onclick="(function(){if(a[${i}]<0.2&&a[${i}]>0)a[${i}]=1;})()"></div>`
+          `<div class="btn" id="btn${i}" onclick="(function(){if(a[${i}]<${threshold}&&a[${i}]>0)a[${i}]=1;})()"></div>`
         );
     }
     const a = [];
