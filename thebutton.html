@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>TheButton</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      body {
+        background-color: #000000;
+      }
+      #fd {
+        display: flex;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fd"></div>
+  </body>
+  <script>
+    const params = new URL(document.location).searchParams;
+    const barCount = params.get("b") || 4;
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      `<style>.btn{width:${90 / barCount}vw;height:${90 / barCount}vw;margin:${
+        5 / barCount
+      }vw;}</style>`
+    );
+    for (let i = 0; i < barCount; i++) {
+      document
+        .getElementById("fd")
+        .insertAdjacentHTML(
+          "beforeend",
+          `<div class="btn" id="btn${i}" onclick="(function(){if(a[${i}]<0.2&&a[${i}]>0)a[${i}]=1;})()"></div>`
+        );
+    }
+    const a = [];
+    const s = [];
+    for (let i = 1; i <= barCount; i++) {
+      a.push(1);
+      s.push(0.01 / i);
+    }
+    setInterval(() => {
+      for (let i = 0; i < barCount; i++) {
+        document.getElementById(`btn${i}`).style.backgroundColor = `rgba(${
+          255 * (2 * (1 - a[i]) - (1 - a[i]) ** 2)
+        },${255 * (2 * a[i] - a[i] ** 2)},0,${a[i]})`;
+        a[i] -= s[i];
+      }
+    }, 600);
+  </script>
+</html>
